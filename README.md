@@ -159,3 +159,10 @@
 11. 單元測試：unittest / pytest（待定）
 12. 負載擴展：Nginx
 13. 日誌記錄：Open telemetry, Prometheus , Grafana
+---
+## 執行方式
+1. 執行 `git clone https://github.com/codesensegroup/open-source-god-python-quick-start.git`
+2. 執行 `cd open-source-god-python-quick-start.git`
+3. 執行 `bash init.sh`
+4. 開啟 swagger: `http://localhost:7717/docs`
+5. 即可使用 POST /chat 和 LLM 對話

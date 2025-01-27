@@ -1,0 +1,82 @@
+name: python-chat
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    healthcheck:
+      test: pg_isready -U $POSTGRES_USER
+      start_interval: 1s
+      start_period: 5s
+      interval: 5s
+      retries: 5
+    ports:
+      - "5433:5432"
+    env_file:
+      - ${ENV_FILE:-.env.default}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  embedding-model-setup:
+    build:   
+      context: .
+      dockerfile: Dockerfile.embedding-model
+      args: 
+        EMBEDDING_MODEL: ${EMBEDDING_MODEL}
+        EMBEDDING_CACHE_FOLDER: ${EMBEDDING_CACHE_FOLDER}
+    volumes:
+      - embedding-models:${EMBEDDING_CACHE_FOLDER}
+    env_file:
+      - ${ENV_FILE:-.env.default}
+
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    volumes:
+      - ollama:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+
+  backend:
+    container_name: ai-chat-backend
+    build:
+      context: . 
+      dockerfile: Dockerfile.backend
+    ports:
+      - "7717:7717" 
+    env_file:  # 預設使用 .env.default 讀取環境變數
+      - ${ENV_FILE:-.env.default}
+    environment:  # 可從 .env.default 設定，並在 GitHub Actions 以 Secrets 覆寫
+      - OPENAI_API_KEY=${OPENAI_API_KEY}  
+      - POSTGRES_HOST=postgres
+    restart: always
+    depends_on:
+      embedding-model-setup:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_started
+      ollama:
+        condition: service_started
+    volumes:
+      - embedding-models:${EMBEDDING_CACHE_FOLDER}
+
+
+  # frontend:
+  #   container_name: ai-chat-frontend
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.frontend
+  #   depends_on:
+  #     backend:
+  #       condition: service_healthy
+  #   ports:
+  #     - "5173:5173" 
+  #   environment:
+  #     BACKEND_URL: "http://backend:7717"
+
+volumes:
+  postgres_data:
+  ollama: 
+  embedding-models:
